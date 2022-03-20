@@ -18,12 +18,12 @@ const int stepsPerRevolution = 2038;
 // The motor (wires 1 2 3 4) is connected to the outputs 8 9 10 11 of the Arduino (and to GND, + V)
 Stepper small_stepper (stepsPerRevolution, 8, 9, 10, 11); // Clockwise
 
-long duration = 0;        // Duration of rotation for one revolution
-float totalturntime = 0;  // Duration of turning
-float totalcycletime = 0; // Duration of cycle
-float totalturntimeinminutes = 0;
-float totalcycletimeinminutes = 0;
-float turnsperminute = 0;
+long duration = 0;                  // Duration of rotation for one revolution
+float totalturntime = 0;            // Duration of turning
+float totalcycletime = 0;           // Duration of cycle
+float totalturntimeinminutes = 0;   // Total Turn time in minutes
+float totalcycletimeinminutes = 0;  // Total Cycle time in minutes
+float turnsperminute = 0;           // Turns per minute
 
 int turn=1;
 
@@ -59,15 +59,17 @@ void loop ()
   }
   else
   {
-    totalturntime = millis() - totalturntime;
+    totalturntime = millis() - totalturntime - (2000*MAX_TURNS); //Adjust for the 2 second delay
     totalturntimeinminutes = totalturntime/1000/60;
     turnsperminute = (MAX_TURNS*4)/totalturntimeinminutes;
     Serial.print("Duration of turning in minutes: ");Serial.println(totalturntimeinminutes,2);
     Serial.print("Turns per minute: ");Serial.println(turnsperminute,2);
+
+    // Print some caclulations instead of having to wait for the IDLE time
     float tempcycletimeinminutes=totalturntimeinminutes+IDLE;
-    Serial.print("Projected cycle time in minutes: ");Serial.println(tempcycletimeinminutes,2);
-    Serial.print("Projected cycles per day: ");Serial.println(1440/tempcycletimeinminutes,2);
-    Serial.print("Projected TPD: ");Serial.println(totalturntimeinminutes*turnsperminute*(24*60/(tempcycletimeinminutes)),2);
+    Serial.print("Calculated cycle time in minutes: ");Serial.println(tempcycletimeinminutes,2);
+    Serial.print("Caclulated cycles per day: ");Serial.println((24*60)/tempcycletimeinminutes,2);
+    Serial.print("Calculated TPD: ");Serial.println(totalturntimeinminutes*turnsperminute*(24*60/(tempcycletimeinminutes)),2);
 
     Serial.print("Idle for ");Serial.print(IDLE);Serial.println(" minutes");
   // While idle flash the led every second
@@ -87,34 +89,36 @@ void loop ()
     totalturntime = millis();
 
     // Example TPD
-    // IDLE 15 minutes
-    // MAX_TURNS 6=>24 turns
-    // Duration of turning 2.2 minutes
-    // Turns per minute 10.90
-    // Total cycle time in minutes 17.2 minutes
-    // 1 cycle = 17.2 minutes
-    // 1 day = (24 hrs X 60 mins) / 17.2 mins = 83.71 cycles
-    // 2.2 minutes turns X 10.90 turns per minute X 83 cycles = 2008 turns per day
+    // IDLE 22 minutes
+    // MAX_TURNS 5=>20 turns
+    // Duration of turning 1.67 minutes
+    // Turns per minute 11.98
+    // Total cycle time in minutes 23.67 minutes
+    // 1 cycle = 23.67 minutes
+    // 1 day = (24 hrs X 60 mins) / 23.67 mins = 60.84 cycles
+    // 1.67 minutes turns X 11.98 turns per minute X 60.84 cycles = 1217 turns per day
+    // With IDLE 30 minutes => 909 turns per day
+    // source: https://www.sgrolexclub.com/forum/other-watches-watch-winder-discussion/watch-winder-discussion/69844-tpd-calculation
   }
 }
 
 
 void turnCCW()
 {
-    duration = millis ();
-    small_stepper.step (-stepsPerRevolution); //It turns CCW
-    duration = millis () - duration;
-    Serial.print("L");
-    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+  duration = millis ();
+  small_stepper.step (-stepsPerRevolution); //It turns CCW
+  duration = millis () - duration;
+  Serial.print("L");
+  Serial.println (duration); // Displays the time (in ms) for a complete revolution
 }
 
 void turnCW()
 {
-    duration = millis ();
-    small_stepper.step (stepsPerRevolution); //It turns CW
-    duration = millis () - duration;
-    Serial.print("R");
-    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+  duration = millis ();
+  small_stepper.step (stepsPerRevolution); //It turns CW
+  duration = millis () - duration;
+  Serial.print("R");
+  Serial.println (duration); // Displays the time (in ms) for a complete revolution
 }
 
 void flashled_1sec()
