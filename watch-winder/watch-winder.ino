@@ -3,6 +3,7 @@
 
 #define LEDPIN 5
 #define MAX_TURNS 5
+#define IDLE 22 // idle time in minutes
 
 // 28BYJ-48 settings
 // When the 28BYJ-48 motor runs in full step mode, each step corresponds to a rotation of 11.25°.
@@ -18,7 +19,11 @@ const int stepsPerRevolution = 2038;
 Stepper small_stepper (stepsPerRevolution, 8, 9, 10, 11); // Clockwise
 
 long duration = 0;        // Duration of rotation for one revolution
-long totalturntime = 0;   // Duration of turning
+float totalturntime = 0;  // Duration of turning
+float totalcycletime = 0; // Duration of cycle
+float totalturntimeinminutes = 0;
+float totalcycletimeinminutes = 0;
+float turnsperminute = 0;
 
 int turn=1;
 
@@ -31,38 +36,23 @@ void setup ()
   // Set motor speed
   small_stepper.setSpeed(12); // Speed of 12 rpm => 0.2 revolution per second => 5 seconds for a revolution
   totalturntime = millis();
+  totalcycletime = millis();
 }
-
-// Turns per day calculation TPD
-//1 turn L 5 seconds
-//1 second delay
-//1 turn R 5 seconds
-//1 second delay
-//= 60 /12 => 5 turns per minute
-//Add 15 minutes idle
-// 1 cycle = 16 minutes
-// 1 day = (24 hrs X 60 mins) / 16 mins = 90 cycles
-// 1 mins X 5 turns X 90 cycles = 450 turns per day
 
 void loop ()
 {
   digitalWrite (LEDPIN, HIGH);
-  delay (100);
  
   if (turn <= MAX_TURNS) {
     Serial.println ("Motor running");
     Serial.print ("Turn:");Serial.println(turn);
 
-    duration = millis ();
-    small_stepper.step (-stepsPerRevolution); //It turns CCW
-    duration = millis () - duration;
-    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+    turnCCW();
+    turnCCW();
     delay (1000); //pause
 
-    duration = millis ();
-    small_stepper.step (stepsPerRevolution); //It turns CW
-    duration = millis () - duration;
-    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+    turnCW();
+    turnCW();
     delay (1000); //pause
 
     turn++; // Add 1 to the turns Counter
@@ -70,22 +60,68 @@ void loop ()
   else
   {
     totalturntime = millis() - totalturntime;
-    Serial.print("Duration of turn in minutes: ");Serial.println(totalturntime/1000/60);
-  // The above is 5 turns per minute
-    for (int i=1;i<=150;i++)
+    totalturntimeinminutes = totalturntime/1000/60;
+    turnsperminute = (MAX_TURNS*4)/totalturntimeinminutes;
+    Serial.print("Duration of turning in minutes: ");Serial.println(totalturntimeinminutes,2);
+    Serial.print("Turns per minute: ");Serial.println(turnsperminute,2);
+    float tempcycletimeinminutes=totalturntimeinminutes+IDLE;
+    Serial.print("Projected cycle time in minutes: ");Serial.println(tempcycletimeinminutes,2);
+    Serial.print("Projected cycles per day: ");Serial.println(1440/tempcycletimeinminutes,2);
+    Serial.print("Projected TPD: ");Serial.println(totalturntimeinminutes*turnsperminute*(24*60/(tempcycletimeinminutes)),2);
+
+    Serial.print("Idle for ");Serial.print(IDLE);Serial.println(" minutes");
+  // While idle flash the led every second
+    for (int i=1;i<=IDLE*60;i++)
     {
-      digitalWrite(LEDPIN, LOW);Serial.print('.');
-      delay(1000);
-      digitalWrite(LEDPIN, HIGH);Serial.print('.');
-      delay(1000);
+      flashled_1sec();
     }
-    // 5 Minutes Elapsed with the LED flashing
 
-    // Wait 10 minutes before rotation again
-    Serial.println ("Idle for 10 minutes");
-    delay(60000); //(60000) = 10 minutes
-
-    turn = 0; // Reset the turns Counter
+    totalcycletime = millis()-totalcycletime;
+    totalcycletimeinminutes=totalcycletime/1000/60;
+    Serial.println();
+    Serial.print("Total cycle time in minutes: ");Serial.println(totalcycletimeinminutes,2);
+    Serial.print("Cycles per day based on the above: ");Serial.println((24*60)/(totalcycletimeinminutes),2);
+    Serial.print("Calculated TPD based on the above: ");Serial.println(totalturntimeinminutes*turnsperminute*(24*60/(totalcycletimeinminutes)),2);
+    turn = 1; // Reset the turns Counter
+    totalcycletime = millis();
     totalturntime = millis();
+
+    // Example TPD
+    // IDLE 15 minutes
+    // MAX_TURNS 6=>24 turns
+    // Duration of turning 2.2 minutes
+    // Turns per minute 10.90
+    // Total cycle time in minutes 17.2 minutes
+    // 1 cycle = 17.2 minutes
+    // 1 day = (24 hrs X 60 mins) / 17.2 mins = 83.71 cycles
+    // 2.2 minutes turns X 10.90 turns per minute X 83 cycles = 2008 turns per day
   }
+}
+
+
+void turnCCW()
+{
+    duration = millis ();
+    small_stepper.step (-stepsPerRevolution); //It turns CCW
+    duration = millis () - duration;
+    Serial.print("L");
+    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+}
+
+void turnCW()
+{
+    duration = millis ();
+    small_stepper.step (stepsPerRevolution); //It turns CW
+    duration = millis () - duration;
+    Serial.print("R");
+    Serial.println (duration); // Displays the time (in ms) for a complete revolution
+}
+
+void flashled_1sec()
+{
+  digitalWrite(LEDPIN, LOW);
+  delay(500);
+  digitalWrite(LEDPIN, HIGH);
+  delay(500);
+  Serial.print('.');
 }
